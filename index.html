@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>PulseGrid — Modern Schulte Grid & Reflex Trainer</title>
+<meta name="description" content="PulseGrid is a modern, high-performance Schulte Grid reflex trainer. Train your visual attention, speed reading, and reactions with customizable grid sizes.">
+<meta name="keywords" content="Schulte Grid, Schulte Table, 舒尔特方格, Focus Trainer, Reflex Game, Speed Reading">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B0F14;
+    --bg-2:#0F1620;
+    --surface:#161F2B;
+    --surface-2:#1D2836;
+    --cell:#1B2531;
+    --cell-border:#2A3746;
+    --text:#E9EEF4;
+    --text-dim:#7C8A9C;
+    --text-faint:#4C5A6C;
+    --amber:#F5A623;
+    --amber-dim:#8A6420;
+    --green:#33D68C;
+    --green-soft:#123A2C;
+    --red:#FF5A5F;
+    --red-soft:#3A1418;
+    --line:#212C3A;
+    --font-mono:'JetBrains Mono', monospace;
+    --font-sans:'Inter', sans-serif;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--font-sans);
+    overflow-x:hidden;
+    -webkit-user-select:none; user-select:none;
+  }
+  body{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px 16px;
+    background-image:
+      radial-gradient(circle at 15% 10%, rgba(245,166,35,0.05), transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(51,214,140,0.05), transparent 40%);
+  }
+  .app{ width:100%; max-width:620px; position:relative; }
+
+  .eyebrow{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.28em;
+    color:var(--amber);
+    text-transform:uppercase;
+    margin:0 0 10px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .eyebrow::before{
+    content:'';
+    width:7px; height:7px; border-radius:50%;
+    background:var(--amber);
+    box-shadow:0 0 8px var(--amber);
+    flex-shrink:0;
+  }
+  h1.title{
+    font-family:var(--font-mono);
+    font-weight:800;
+    font-size:clamp(34px, 8vw, 52px);
+    letter-spacing:-0.01em;
+    margin:0 0 6px;
+    line-height:1;
+  }
+  h1.title span{ color:var(--amber); }
+  .subtitle{
+    color:var(--text-dim);
+    font-size:14px;
+    line-height:1.6;
+    margin:0 0 32px;
+    max-width:440px;
+  }
+
+  .screen{ display:none; }
+  .screen.active{ display:block; }
+
+  /* ---- START SCREEN ---- */
+  .panel{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:28px 24px;
+  }
+  .field-label{
+    display:flex; justify-content:space-between; align-items:baseline;
+    font-family:var(--font-mono);
+    font-size:12px; letter-spacing:0.08em; text-transform:uppercase;
+    color:var(--text-dim); margin-bottom:14px;
+  }
+  .field-label .val{
+    font-size:20px; font-weight:700; color:var(--amber); letter-spacing:0;
+  }
+  input[type=range]{
+    -webkit-appearance:none; appearance:none;
+    width:100%; height:4px;
+    border-radius:2px;
+    background:var(--cell-border);
+    outline:none;
+    margin:8px 0 6px;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none;
+    width:22px; height:22px; border-radius:50%;
+    background:var(--amber);
+    border:3px solid var(--bg);
+    box-shadow:0 0 0 1px var(--amber);
+    cursor:pointer;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:22px; height:22px; border-radius:50%;
+    background:var(--amber); border:3px solid var(--bg);
+    box-shadow:0 0 0 1px var(--amber); cursor:pointer;
+  }
+  .tick-row{
+    display:flex; justify-content:space-between;
+    font-family:var(--font-mono);
+    font-size:10px; color:var(--text-faint);
+    padding:0 2px;
+    margin-bottom:22px;
+  }
+  .cell-count{
+    font-family:var(--font-mono);
+    font-size:12px; color:var(--text-dim);
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:10px 14px;
+    margin-bottom:22px;
+    display:flex; justify-content:space-between;
+  }
+  .cell-count b{ color:var(--text); font-weight:600; }
+
+  button.primary{
+    width:100%;
+    background:var(--amber);
+    color:#1A1200;
+    border:none;
+    border-radius:10px;
+    font-family:var(--font-mono);
+    font-weight:700;
+    font-size:15px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    padding:16px;
+    cursor:pointer;
+    transition:transform 0.08s ease, background 0.15s ease;
+  }
+  button.primary:active{ transform:scale(0.98); background:#E19A1E; }
+
+  button.ghost{
+    width:100%;
+    background:transparent;
+    color:var(--text);
+    border:1px solid var(--line);
+    border-radius:10px;
+    font-family:var(--font-mono);
+    font-weight:600;
+    font-size:14px;
+    letter-spacing:0.04em;
+    text-transform:uppercase;
+    padding:15px;
+    cursor:pointer;
+    transition:transform 0.08s ease, border-color 0.15s ease;
+  }
+  button.ghost:active{ transform:scale(0.98); border-color:var(--text-dim); }
+
+  button.extreme-btn{
+    width:100%;
+    background:transparent;
+    color:var(--red);
+    border:1.5px solid var(--red);
+    border-radius:10px;
+    font-family:var(--font-mono);
+    font-weight:700;
+    font-size:13px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    padding:14px;
+    cursor:pointer;
+    margin-bottom:18px;
+    transition:transform 0.08s ease, background 0.15s ease, color 0.15s ease;
+  }
+  button.extreme-btn:active{ transform:scale(0.98); }
+  button.extreme-btn.active{ background:var(--red); color:#2A0708; }
+
+  /* ---- EXTREME MODE MODAL ---- */
+  .extreme-overlay{
+    position:fixed; inset:0;
+    background:rgba(6,9,12,0.86);
+    backdrop-filter:blur(4px);
+    -webkit-backdrop-filter:blur(4px);
+    display:none;
+    align-items:center; justify-content:center;
+    z-index:60;
+    padding:20px;
+  }
+  .extreme-overlay.active{ display:flex; }
+  .extreme-modal{
+    width:100%; max-width:420px;
+    background:var(--surface);
+    border:1.5px solid var(--red);
+    border-radius:16px;
+    padding:22px;
+  }
+  .extreme-modal-title{
+    font-family:var(--font-mono); font-weight:700; font-size:16px;
+    letter-spacing:0.06em; text-transform:uppercase; color:var(--red);
+    margin:0 0 4px;
+  }
+  .extreme-modal-sub{
+    font-size:12px; color:var(--text-dim); margin:0 0 18px; line-height:1.5;
+  }
+  .mod-row{
+    display:flex; align-items:flex-start; gap:12px;
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:14px;
+    margin-bottom:10px;
+    cursor:pointer;
+    transition:border-color 0.15s ease, background 0.15s ease;
+  }
+  .mod-row:last-child{ margin-bottom:0; }
+  .mod-row.active{ border-color:var(--red); background:var(--red-soft); }
+  .mod-row .mod-toggle{
+    width:18px; height:18px; border-radius:5px;
+    border:1.5px solid var(--text-faint);
+    flex-shrink:0; margin-top:2px;
+    transition:background 0.15s ease, border-color 0.15s ease;
+  }
+  .mod-row.active .mod-toggle{ background:var(--red); border-color:var(--red); }
+  .mod-row .mod-name{
+    font-family:var(--font-mono); font-weight:700; font-size:13px;
+    letter-spacing:0.04em; text-transform:uppercase; color:var(--text); margin:0 0 4px;
+  }
+  .mod-row.active .mod-name{ color:var(--red); }
+  .mod-row .mod-desc{
+    font-size:12.5px; color:var(--text-dim); line-height:1.5; margin:0;
+  }
+
+  /* ---- GRID SCREEN ---- */
+  .hud{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:16px;
+  }
+  .hud .mode{
+    font-family:var(--font-mono); font-size:12px; color:var(--text-dim);
+    letter-spacing:0.06em;
+  }
+  .hud .mode b{ color:var(--text); }
+  .timer{
+    font-family:var(--font-mono);
+    font-size:22px; font-weight:700;
+    color:var(--text);
+    font-variant-numeric:tabular-nums;
+    letter-spacing:0.02em;
+  }
+  .timer .ms{ color:var(--text-dim); font-size:14px; }
+
+  .progress-track{
+    height:3px; background:var(--line); border-radius:2px; margin-bottom:18px; overflow:hidden;
+  }
+  .progress-fill{
+    height:100%; width:0%; background:var(--green); transition:width 0.25s ease;
+  }
+
+  .mod-bar{
+    display:none;
+    align-items:center; justify-content:space-between;
+    gap:10px;
+    margin-bottom:16px;
+  }
+  .mod-bar.show{ display:flex; }
+  button.eye-btn{
+    display:none;
+    background:transparent;
+    color:var(--red);
+    border:1.5px solid var(--red);
+    border-radius:8px;
+    font-family:var(--font-mono);
+    font-weight:700;
+    font-size:12px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    padding:9px 14px;
+    cursor:pointer;
+    transition:opacity 0.2s ease, transform 0.08s ease;
+  }
+  button.eye-btn.show{ display:inline-block; }
+  button.eye-btn:active{ transform:scale(0.97); }
+  button.eye-btn.depleted{ opacity:0.32; pointer-events:none; }
+  .clock-box{
+    display:none;
+    align-items:center; gap:8px;
+    font-family:var(--font-mono); font-size:12px; color:var(--red);
+    border:1.5px solid var(--red); border-radius:8px;
+    padding:9px 14px;
+    letter-spacing:0.04em;
+  }
+  .clock-box.show{ display:flex; }
+  .clock-box .clock-val{ font-size:16px; font-weight:700; }
+
+  .grid-wrap{ position:relative; }
+  .grid{
+    display:grid;
+    gap:6px;
+    width:100%;
+    aspect-ratio:1/1;
+    background:var(--bg-2);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:8px;
+  }
+  .cell{
+    background:var(--cell);
+    border:1px solid var(--cell-border);
+    border-radius:6px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-mono);
+    font-weight:700;
+    color:var(--text);
+    cursor:pointer;
+    position:relative;
+    transition:background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+  }
+  .cell.pending{ color:transparent; cursor:default; }
+  .cell.solved{ cursor:default; }
+  .cell.flash-wrong{ animation:wrongPulse 0.36s ease; }
+  .cell.flash-correct{ animation:correctPulse 0.32s ease; }
+
+  @keyframes wrongPulse{
+    0%{ transform:scale(1); background:var(--cell); border-color:var(--cell-border); }
+    35%{ transform:scale(1.16); background:var(--red-soft); border-color:var(--red); }
+    70%{ transform:scale(0.92); background:var(--red-soft); border-color:var(--red); }
+    100%{ transform:scale(1); background:var(--cell); border-color:var(--cell-border); }
+  }
+  @keyframes correctPulse{
+    0%{ transform:scale(1); background:var(--cell); border-color:var(--cell-border); color:var(--text); box-shadow:0 0 0 0 rgba(51,214,140,0); }
+    40%{ transform:scale(1.16); background:var(--green-soft); border-color:var(--green); color:var(--green); box-shadow:0 0 0 4px rgba(51,214,140,0.18); }
+    100%{ transform:scale(1); background:var(--cell); border-color:var(--cell-border); color:var(--text); box-shadow:0 0 0 0 rgba(51,214,140,0); }
+  }
+
+  .tap-overlay{
+    position:absolute; inset:0;
+    background:rgba(11,15,20,0.86);
+    border-radius:14px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:12px;
+    cursor:pointer;
+    z-index:5;
+  }
+  .tap-overlay .pulse-dot{
+    width:14px; height:14px; border-radius:50%;
+    background:var(--amber);
+    box-shadow:0 0 0 0 rgba(245,166,35,0.6);
+    animation:dotPulse 1.6s ease-out infinite;
+  }
+  @keyframes dotPulse{
+    0%{ box-shadow:0 0 0 0 rgba(245,166,35,0.5); }
+    70%{ box-shadow:0 0 0 22px rgba(245,166,35,0); }
+    100%{ box-shadow:0 0 0 0 rgba(245,166,35,0); }
+  }
+  .tap-overlay .tap-text{
+    font-family:var(--font-mono); font-weight:700; font-size:15px;
+    letter-spacing:0.08em; text-transform:uppercase; color:var(--text);
+  }
+  .tap-overlay .tap-sub{
+    font-size:12px; color:var(--text-dim); text-align:center; max-width:260px; line-height:1.5;
+  }
+
+  .next-hint{
+    margin-top:16px;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    font-family:var(--font-mono); font-size:12px; color:var(--text-dim);
+  }
+  .next-hint b{ color:var(--amber); font-size:14px; }
+
+  /* ---- COMPLETE OVERLAY ---- */
+  .complete-overlay{
+    position:fixed; inset:0;
+    background:rgba(6,9,12,0.92);
+    backdrop-filter:blur(6px);
+    -webkit-backdrop-filter:blur(6px);
+    display:none;
+    align-items:center; justify-content:center;
+    z-index:50;
+    padding:20px;
+    opacity:0;
+    transition:opacity 0.35s ease;
+  }
+  .complete-overlay.active{ display:flex; opacity:1; }
+  .complete-card{
+    width:100%; max-width:400px;
+    text-align:center;
+  }
+  .complete-eyebrow{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:0.28em;
+    text-transform:uppercase; color:var(--green); margin-bottom:14px;
+  }
+  .complete-time{
+    font-family:var(--font-mono); font-weight:800;
+    font-size:clamp(44px, 13vw, 64px);
+    color:var(--text);
+    letter-spacing:-0.02em;
+    line-height:1;
+    margin-bottom:6px;
+    opacity:0;
+    transform:translateY(8px);
+    transition:opacity 0.4s ease, transform 0.4s ease;
+  }
+  .complete-time.show{ opacity:1; transform:translateY(0); }
+  .complete-time .cs{ font-size:0.5em; color:var(--text-dim); }
+  .complete-sub{
+    color:var(--text-dim); font-size:13px; margin-bottom:34px;
+  }
+  .complete-sub b{ color:var(--text); }
+  .complete-actions{ display:flex; flex-direction:column; gap:10px; }
+
+  .footer-note{
+    text-align:center; margin-top:22px; font-size:11px; color:var(--text-faint);
+    font-family:var(--font-mono); letter-spacing:0.04em;
+  }
+
+  .fail-overlay{
+    position:fixed; inset:0;
+    background:rgba(6,9,12,0.92);
+    backdrop-filter:blur(6px);
+    -webkit-backdrop-filter:blur(6px);
+    display:none;
+    align-items:center; justify-content:center;
+    z-index:50;
+    padding:20px;
+    opacity:0;
+    transition:opacity 0.35s ease;
+  }
+  .fail-overlay.active{ display:flex; opacity:1; }
+  .fail-card{ width:100%; max-width:400px; text-align:center; }
+  .fail-eyebrow{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:0.28em;
+    text-transform:uppercase; color:var(--red); margin-bottom:14px;
+  }
+  .fail-title{
+    font-family:var(--font-mono); font-weight:800;
+    font-size:clamp(30px, 8vw, 40px);
+    color:var(--text);
+    letter-spacing:-0.01em;
+    margin:0 0 12px;
+  }
+  .fail-sub{ color:var(--text-dim); font-size:13px; margin-bottom:34px; }
+  .fail-sub b{ color:var(--text); }
+
+  #share-canvas{ display:none; }
+
+  @media (prefers-reduced-motion: reduce){
+    .cell.flash-wrong, .cell.flash-correct, .tap-overlay .pulse-dot{ animation:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <p class="eyebrow">MODERN SCHULTE GRID TRAINER</p>
+  <h1 class="title">PULSE<span>GRID</span></h1>
+  <p class="subtitle">The instant you tap in, every number on the grid is revealed at once. Scan the field and tap 1 through N in order as fast as your eyes can track. One wrong tap flashes red — no penalty but the clock. A modern reimagining of the classic Schulte Grid method for visual focus and reflex training.</p>
+
+  <!-- START SCREEN -->
+  <div class="screen active" id="screen-start">
+    <div class="panel">
+      <div class="field-label">
+        <span>Grid size</span>
+        <span class="val"><span id="size-val">7</span> × <span id="size-val-2">7</span></span>
+      </div>
+      <input type="range" id="size-slider" min="5" max="10" value="7" step="1">
+      <div class="tick-row">
+        <span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
+      </div>
+      <div class="cell-count">
+        <span>Total cells to clear</span>
+        <b id="cell-count-val">49</b>
+      </div>
+      <button class="extreme-btn" id="btn-extreme">Extreme mode</button>
+      <button class="primary" id="btn-start">Set up grid</button>
+    </div>
+  </div>
+
+  <!-- GRID SCREEN -->
+  <div class="screen" id="screen-grid">
+    <div class="hud">
+      <div class="mode">Mode <b id="hud-mode">7×7</b></div>
+      <div class="timer"><span id="hud-timer">00:00</span><span class="ms">.<span id="hud-ms">00</span></span></div>
+    </div>
+    <div class="mod-bar" id="mod-bar">
+      <button class="eye-btn" id="btn-eye">Peek (5)</button>
+      <div class="clock-box" id="clock-box">Clock <span class="clock-val" id="clock-val">5</span>s</div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+    <div class="grid-wrap">
+      <div class="grid" id="grid"></div>
+      <div class="tap-overlay" id="tap-overlay">
+        <div class="pulse-dot"></div>
+        <div class="tap-text">Tap grid to begin</div>
+        <div class="tap-sub">All numbers reveal instantly and stay visible. Timer starts the moment you tap.</div>
+      </div>
+    </div>
+    <div class="next-hint">
+      <span>Find</span> <b id="next-num">1</b> <span>of <span id="total-num">49</span></span>
+    </div>
+  </div>
+
+</div>
+
+<div class="complete-overlay" id="complete-overlay">
+  <div class="complete-card">
+    <p class="complete-eyebrow">Grid cleared</p>
+    <div class="complete-time" id="complete-time">00:00<span class="cs">.00</span></div>
+    <p class="complete-sub">Cleared <b id="complete-mode">7×7</b> — <b id="complete-cells">49</b> cells, <b id="complete-mistakes">0</b> mistakes</p>
+    <div class="complete-actions">
+      <button class="primary" id="btn-share">Share result</button>
+      <button class="ghost" id="btn-replay">Play again</button>
+    </div>
+  </div>
+</div>
+
+<div class="extreme-overlay" id="extreme-overlay">
+  <div class="extreme-modal" id="extreme-modal">
+    <p class="extreme-modal-title">Extreme mode</p>
+    <p class="extreme-modal-sub">Stack any combination of challenges. Tap outside this card to confirm your picks.</p>
+    <div id="mod-list"></div>
+  </div>
+</div>
+
+<div class="fail-overlay" id="fail-overlay">
+  <div class="fail-card">
+    <p class="fail-eyebrow">Challenge failed</p>
+    <p class="fail-title" id="fail-title">Grid lost</p>
+    <p class="fail-sub" id="fail-sub">Better luck next run.</p>
+    <div class="complete-actions">
+      <button class="primary" id="btn-fail-retry">Try again</button>
+    </div>
+  </div>
+</div>
+
+<canvas id="share-canvas" width="1200" height="630"></canvas>
+
+<script>
+(function(){
+  var state = {
+    n: 7,
+    cells: [],
+    numbers: [],
+    nextExpected: 1,
+    started: false,
+    finished: false,
+    startTime: 0,
+    elapsedMs: 0,
+    timerHandle: null,
+    mistakes: 0,
+    mods: { hidden: false, nofail: false, clock: false },
+    peeksLeft: 0,
+    peekActive: false,
+    clockSeconds: 0,
+    clockHandle: null
+  };
+
+  var MOD_DEFS = [
+    { key: 'hidden', name: 'Hidden', desc: 'Every cell stays covered. Tap the eye above the grid to peek at all numbers for 1 second — you get as many peeks as the grid size.' },
+    { key: 'nofail', name: 'NoFail', desc: 'One wrong tap ends the run immediately.' },
+    { key: 'clock', name: 'Clock', desc: 'A 5 second countdown runs alongside the timer. Correct taps add 2s, wrong taps cost 1s. Hits zero and the run is over.' }
+  ];
+
+  var screenStart = document.getElementById('screen-start');
+  var screenGrid = document.getElementById('screen-grid');
+  var sizeSlider = document.getElementById('size-slider');
+  var sizeVal = document.getElementById('size-val');
+  var sizeVal2 = document.getElementById('size-val-2');
+  var cellCountVal = document.getElementById('cell-count-val');
+  var btnStart = document.getElementById('btn-start');
+  var gridEl = document.getElementById('grid');
+  var tapOverlay = document.getElementById('tap-overlay');
+  var hudMode = document.getElementById('hud-mode');
+  var hudTimer = document.getElementById('hud-timer');
+  var hudMs = document.getElementById('hud-ms');
+  var progressFill = document.getElementById('progress-fill');
+  var nextNumEl = document.getElementById('next-num');
+  var totalNumEl = document.getElementById('total-num');
+  var completeOverlay = document.getElementById('complete-overlay');
+  var completeTime = document.getElementById('complete-time');
+  var completeMode = document.getElementById('complete-mode');
+  var completeCells = document.getElementById('complete-cells');
+  var completeMistakes = document.getElementById('complete-mistakes');
+  var btnReplay = document.getElementById('btn-replay');
+  var btnShare = document.getElementById('btn-share');
+  var btnExtreme = document.getElementById('btn-extreme');
+  var extremeOverlay = document.getElementById('extreme-overlay');
+  var extremeModal = document.getElementById('extreme-modal');
+  var modList = document.getElementById('mod-list');
+  var modBar = document.getElementById('mod-bar');
+  var btnEye = document.getElementById('btn-eye');
+  var clockBox = document.getElementById('clock-box');
+  var clockVal = document.getElementById('clock-val');
+  var failOverlay = document.getElementById('fail-overlay');
+  var failTitle = document.getElementById('fail-title');
+  var failSub = document.getElementById('fail-sub');
+  var btnFailRetry = document.getElementById('btn-fail-retry');
+
+  function renderModList(){
+    modList.innerHTML = '';
+    MOD_DEFS.forEach(function(mod){
+      var row = document.createElement('div');
+      row.className = 'mod-row' + (state.mods[mod.key] ? ' active' : '');
+      row.dataset.key = mod.key;
+      row.innerHTML = '<div class="mod-toggle"></div><div><p class="mod-name">' + mod.name + '</p><p class="mod-desc">' + mod.desc + '</p></div>';
+      row.addEventListener('click', function(ev){
+        ev.stopPropagation();
+        state.mods[mod.key] = !state.mods[mod.key];
+        renderModList();
+      });
+      modList.appendChild(row);
+    });
+  }
+
+  function updateExtremeButton(){
+    var count = 0;
+    MOD_DEFS.forEach(function(mod){ if (state.mods[mod.key]) count++; });
+    if (count > 0){
+      btnExtreme.textContent = 'Extreme mode \u00B7 ' + count + '/3';
+      btnExtreme.classList.add('active');
+    } else {
+      btnExtreme.textContent = 'Extreme mode';
+      btnExtreme.classList.remove('active');
+    }
+  }
+
+  btnExtreme.addEventListener('click', function(){
+    renderModList();
+    extremeOverlay.classList.add('active');
+  });
+
+  extremeOverlay.addEventListener('click', function(e){
+    if (e.target === extremeOverlay){
+      extremeOverlay.classList.remove('active');
+      updateExtremeButton();
+    }
+  });
+
+  function updateSliderUI(){
+    var n = parseInt(sizeSlider.value, 10);
+    sizeVal.textContent = n;
+    sizeVal2.textContent = n;
+    cellCountVal.textContent = (n * n);
+  }
+  sizeSlider.addEventListener('input', updateSliderUI);
+  updateSliderUI();
+
+  function shuffle(arr){
+    for (var i = arr.length - 1; i > 0; i--){
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    }
+    return arr;
+  }
+
+  function buildGrid(n){
+    state.n = n;
+    state.nextExpected = 1;
+    state.started = false;
+    state.finished = false;
+    state.mistakes = 0;
+    state.elapsedMs = 0;
+    state.peeksLeft = n;
+    state.peekActive = false;
+    state.clockSeconds = 5;
+    if (state.clockHandle) clearInterval(state.clockHandle);
+    gridEl.innerHTML = '';
+    gridEl.style.gridTemplateColumns = 'repeat(' + n + ', 1fr)';
+    gridEl.style.gridTemplateRows = 'repeat(' + n + ', 1fr)';
+
+    var total = n * n;
+    var fontSize = Math.max(12, Math.min(28, 220 / n));
+    state.cells = [];
+
+    for (var i = 0; i < total; i++){
+      var cellEl = document.createElement('div');
+      cellEl.className = 'cell pending';
+      cellEl.style.fontSize = fontSize + 'px';
+      cellEl.dataset.index = i;
+      cellEl.addEventListener('click', onCellClick);
+      gridEl.appendChild(cellEl);
+      state.cells.push(cellEl);
+    }
+
+    hudMode.textContent = n + '×' + n;
+    totalNumEl.textContent = total;
+    nextNumEl.textContent = 1;
+    progressFill.style.width = '0%';
+    hudTimer.textContent = '00:00';
+    hudMs.textContent = '00';
+    tapOverlay.style.display = 'flex';
+
+    var anyBarMod = state.mods.hidden || state.mods.clock;
+    modBar.classList.toggle('show', anyBarMod);
+    btnEye.classList.toggle('show', state.mods.hidden);
+    btnEye.classList.remove('depleted');
+    btnEye.textContent = 'Peek (' + state.peeksLeft + ')';
+    clockBox.classList.toggle('show', state.mods.clock);
+    clockVal.textContent = state.clockSeconds;
+  }
+
+  function assignNumbers(){
+    var total = state.n * state.n;
+    var nums = [];
+    for (var i = 1; i <= total; i++) nums.push(i);
+    shuffle(nums);
+    for (var i = 0; i < total; i++){
+      state.cells[i].dataset.number = nums[i];
+      state.cells[i].textContent = nums[i];
+      if (!state.mods.hidden) state.cells[i].classList.remove('pending');
+    }
+  }
+
+  function doPeek(){
+    if (!state.mods.hidden || state.peekActive || state.peeksLeft <= 0 || state.finished) return;
+    state.peekActive = true;
+    state.peeksLeft--;
+    btnEye.textContent = 'Peek (' + state.peeksLeft + ')';
+    if (state.peeksLeft <= 0) btnEye.classList.add('depleted');
+    state.cells.forEach(function(c){ c.classList.remove('pending'); });
+    setTimeout(function(){
+      state.cells.forEach(function(c){ c.classList.add('pending'); });
+      state.peekActive = false;
+    }, 1000);
+  }
+  btnEye.addEventListener('click', doPeek);
+
+  function beginPlay(){
+    tapOverlay.style.display = 'none';
+    assignNumbers();
+    state.started = true;
+    state.startTime = performance.now();
+    state.timerHandle = setInterval(tickTimer, 47);
+    if (state.mods.clock){
+      state.clockHandle = setInterval(tickClock, 1000);
+    }
+  }
+
+  function tickClock(){
+    state.clockSeconds--;
+    clockVal.textContent = Math.max(state.clockSeconds, 0);
+    if (state.clockSeconds <= 0){
+      failGame('Clock hit zero', 'The countdown ran out before you finished.');
+    }
+  }
+
+  function tickTimer(){
+    var elapsed = performance.now() - state.startTime;
+    state.elapsedMs = elapsed;
+    var totalCs = Math.floor(elapsed / 10);
+    var mm = Math.floor(totalCs / 6000);
+    var ss = Math.floor((totalCs % 6000) / 100);
+    var cs = totalCs % 100;
+    hudTimer.textContent = pad2(mm) + ':' + pad2(ss);
+    hudMs.textContent = pad2(cs);
+  }
+
+  function pad2(v){ return (v < 10 ? '0' : '') + v; }
+
+  function onCellClick(e){
+    if (!state.started || state.finished) return;
+    var cellEl = e.currentTarget;
+    if (cellEl.classList.contains('solved')) return;
+
+    var num = parseInt(cellEl.dataset.number, 10);
+    if (num === state.nextExpected){
+      cellEl.classList.add('solved', 'flash-correct');
+      cellEl.addEventListener('animationend', function handler(){
+        cellEl.classList.remove('flash-correct');
+        cellEl.removeEventListener('animationend', handler);
+      });
+      state.nextExpected++;
+      nextNumEl.textContent = Math.min(state.nextExpected, state.n * state.n);
+      var total = state.n * state.n;
+      var solvedCount = state.nextExpected - 1;
+      progressFill.style.width = (solvedCount / total * 100) + '%';
+
+      if (state.mods.clock && !state.finished){
+        state.clockSeconds += 2;
+        clockVal.textContent = state.clockSeconds;
+      }
+
+      if (solvedCount === total){
+        finishGame();
+      }
+    } else {
+      state.mistakes++;
+      cellEl.classList.remove('flash-wrong');
+      void cellEl.offsetWidth;
+      cellEl.classList.add('flash-wrong');
+      cellEl.addEventListener('animationend', function handler(){
+        cellEl.classList.remove('flash-wrong');
+        cellEl.removeEventListener('animationend', handler);
+      });
+
+      if (state.mods.clock && !state.finished){
+        state.clockSeconds -= 1;
+        clockVal.textContent = Math.max(state.clockSeconds, 0);
+        if (state.clockSeconds <= 0){
+          failGame('Clock hit zero', 'The countdown ran out before you finished.');
+          return;
+        }
+      }
+
+      if (state.mods.nofail && !state.finished){
+        failGame('Wrong tap', 'NoFail mode ends the run on the first mistake.');
+      }
+    }
+  }
+
+  function failGame(title, reason){
+    if (state.finished) return;
+    state.finished = true;
+    clearInterval(state.timerHandle);
+    if (state.clockHandle) clearInterval(state.clockHandle);
+    failTitle.textContent = title;
+    failSub.textContent = reason;
+    setTimeout(function(){
+      failOverlay.classList.add('active');
+    }, 300);
+  }
+
+  function finishGame(){
+    state.finished = true;
+    clearInterval(state.timerHandle);
+    if (state.clockHandle) clearInterval(state.clockHandle);
+    var elapsed = state.elapsedMs;
+    var totalCs = Math.floor(elapsed / 10);
+    var mm = Math.floor(totalCs / 6000);
+    var ss = Math.floor((totalCs % 6000) / 100);
+    var cs = totalCs % 100;
+
+    completeMode.textContent = state.n + '×' + state.n;
+    completeCells.textContent = (state.n * state.n);
+    completeMistakes.textContent = state.mistakes;
+    completeTime.innerHTML = pad2(mm) + ':' + pad2(ss) + '<span class="cs">.' + pad2(cs) + '</span>';
+
+    state.finalTimeStr = pad2(mm) + ':' + pad2(ss) + '.' + pad2(cs);
+
+    setTimeout(function(){
+      completeOverlay.classList.add('active');
+      requestAnimationFrame(function(){
+        completeTime.classList.add('show');
+      });
+    }, 400);
+  }
+
+  tapOverlay.addEventListener('click', function(){
+    if (!state.started) beginPlay();
+  });
+
+  btnStart.addEventListener('click', function(){
+    var n = parseInt(sizeSlider.value, 10);
+    screenStart.classList.remove('active');
+    screenGrid.classList.add('active');
+    buildGrid(n);
+  });
+
+  btnReplay.addEventListener('click', function(){
+    completeOverlay.classList.remove('active');
+    completeTime.classList.remove('show');
+    screenGrid.classList.remove('active');
+    screenStart.classList.add('active');
+    if (state.timerHandle) clearInterval(state.timerHandle);
+    if (state.clockHandle) clearInterval(state.clockHandle);
+  });
+
+  btnFailRetry.addEventListener('click', function(){
+    failOverlay.classList.remove('active');
+    screenGrid.classList.remove('active');
+    screenStart.classList.add('active');
+    if (state.timerHandle) clearInterval(state.timerHandle);
+    if (state.clockHandle) clearInterval(state.clockHandle);
+  });
+
+  btnShare.addEventListener('click', function(){
+    generateShareImage();
+  });
+
+  function generateShareImage(){
+    var canvas = document.getElementById('share-canvas');
+    var ctx = canvas.getContext('2d');
+    var W = canvas.width, H = canvas.height;
+
+    ctx.fillStyle = '#0B0F14';
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.fillStyle = 'rgba(245,166,35,0.06)';
+    ctx.beginPath();
+    ctx.arc(120, 90, 260, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(51,214,140,0.06)';
+    ctx.beginPath();
+    ctx.arc(W - 140, H - 110, 280, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#F5A623';
+    ctx.font = '700 20px "JetBrains Mono", monospace';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText('REFLEX GRID TRAINER', 70, 90);
+
+    ctx.fillStyle = '#E9EEF4';
+    ctx.font = '800 76px "JetBrains Mono", monospace';
+    ctx.fillText('PULSEGRID', 68, 170);
+
+    var n = state.n;
+    var cellsTotal = n * n;
+
+    ctx.fillStyle = '#7C8A9C';
+    ctx.font = '500 22px "Inter", sans-serif';
+    ctx.fillText('Cleared the ' + n + '\u00D7' + n + ' mode (' + cellsTotal + ' cells)', 70, 225);
+
+    ctx.fillStyle = '#161F2B';
+    roundRect(ctx, 68, 260, 700, 220, 20);
+    ctx.fill();
+    ctx.strokeStyle = '#2A3746';
+    ctx.lineWidth = 1;
+    roundRect(ctx, 68, 260, 700, 220, 20);
+    ctx.stroke();
+
+    ctx.fillStyle = '#33D68C';
+    ctx.font = '700 16px "JetBrains Mono", monospace';
+    ctx.fillText('FINAL TIME', 100, 310);
+
+    ctx.fillStyle = '#E9EEF4';
+    ctx.font = '800 92px "JetBrains Mono", monospace';
+    ctx.fillText(state.finalTimeStr, 100, 420);
+
+    ctx.fillStyle = '#4C5A6C';
+    ctx.font = '500 18px "Inter", sans-serif';
+    ctx.fillText(state.mistakes + ' mistake' + (state.mistakes === 1 ? '' : 's') + ' along the way', 100, 460);
+
+    ctx.fillStyle = '#F5A623';
+    ctx.font = '600 30px "Inter", sans-serif';
+    ctx.fillText('Think you can beat it? Come challenge me!', 70, 545);
+
+    var activeModNames = MOD_DEFS.filter(function(m){ return state.mods[m.key]; }).map(function(m){ return m.name; });
+    var footerY = 590;
+    if (activeModNames.length > 0){
+      ctx.fillStyle = '#FF5A5F';
+      ctx.font = '700 18px "JetBrains Mono", monospace';
+      ctx.fillText('MOD ADDED : ' + activeModNames.join('  ').toUpperCase(), 70, footerY);
+      footerY += 34;
+    }
+
+    ctx.fillStyle = '#4C5A6C';
+    ctx.font = '500 16px "JetBrains Mono", monospace';
+    ctx.fillText('PLAY AT PULSEGRID', 70, footerY);
+
+    canvas.toBlob(function(blob){
+      var url = URL.createObjectURL(blob);
+      var filename = 'pulsegrid-' + n + 'x' + n + '-' + state.finalTimeStr.replace(/[:.]/g,'-') + '.png';
+
+      if (navigator.canShare && navigator.share){
+        var file = new File([blob], filename, { type: 'image/png' });
+        if (navigator.canShare({ files: [file] })){
+          navigator.share({
+            files: [file],
+            title: 'PulseGrid result',
+            text: 'I cleared PulseGrid ' + n + '\u00D7' + n + ' in ' + state.finalTimeStr + '! Come challenge me!'
+          }).catch(function(){ downloadBlob(url, filename); });
+          return;
+        }
+      }
+      downloadBlob(url, filename);
+    }, 'image/png');
+  }
+
+  function downloadBlob(url, filename){
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+  }
+
+  function roundRect(ctx, x, y, w, h, r){
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+})();
+</script>
+
+</body>
+</html>
