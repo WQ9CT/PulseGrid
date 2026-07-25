@@ -45,9 +45,17 @@
     align-items:center;
     justify-content:center;
     padding:24px 16px;
-    background-image:
-      radial-gradient(circle at 15% 10%, rgba(245,166,35,0.05), transparent 40%),
-      radial-gradient(circle at 85% 90%, rgba(51,214,140,0.05), transparent 40%);
+    background-color: var(--bg);
+  }
+  .bg-blobs { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+  .blob { position: absolute; border-radius: 50%; filter: blur(90px); opacity: 0.15; animation: floatBlob 20s infinite alternate cubic-bezier(0.4, 0, 0.2, 1); }
+  .blob-1 { width: 400px; height: 400px; background: var(--amber); top: -10%; left: -10%; animation-delay: 0s; }
+  .blob-2 { width: 500px; height: 500px; background: var(--green); bottom: -20%; right: -10%; animation-delay: -5s; animation-duration: 25s; }
+  .blob-3 { width: 350px; height: 350px; background: var(--red); top: 40%; left: 60%; animation-delay: -10s; animation-duration: 22s; }
+  @keyframes floatBlob {
+    0% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(50px, 80px) scale(1.1); }
+    100% { transform: translate(-60px, -40px) scale(0.9); }
   }
   .app{ width:100%; max-width:620px; position:relative; }
 
@@ -87,7 +95,14 @@
   }
 
   .screen{ display:none; }
-  .screen.active{ display:block; }
+  .screen.active{ 
+    display:block; 
+    animation: screenEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  @keyframes screenEnter {
+    0% { opacity: 0; transform: translateY(12px) scale(0.98); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
 
   /* ---- START SCREEN ---- */
   .panel{
@@ -105,26 +120,27 @@
   .field-label .val{
     font-size:20px; font-weight:700; color:var(--amber); letter-spacing:0;
   }
-  input[type=range]{
-    -webkit-appearance:none; appearance:none;
-    width:100%; height:4px;
-    border-radius:2px;
-    background:var(--cell-border);
-    outline:none;
-    margin:8px 0 6px;
+  .slider-wrap { position: relative; margin: 8px 0 6px; height: 22px; display:flex; align-items:center; }
+  .slider-track-bg, .slider-track-visual {
+    position: absolute; left:0; height: 4px; border-radius: 2px; top:50%; margin-top:-2px; pointer-events:none;
   }
-  input[type=range]::-webkit-slider-thumb{
-    -webkit-appearance:none; appearance:none;
-    width:22px; height:22px; border-radius:50%;
-    background:var(--amber);
-    border:3px solid var(--bg);
-    box-shadow:0 0 0 1px var(--amber);
-    cursor:pointer;
+  .slider-track-bg { width: 100%; background: var(--cell-border); z-index: 0; }
+  .slider-track-visual { width: var(--slider-pct, 40%); background: var(--amber); z-index: 1; transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+  .slider-thumb-visual {
+    position: absolute; left: var(--slider-pct, 40%); top:50%; margin-top:-11px; margin-left:-11px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--amber); border: 3px solid var(--bg); box-shadow: 0 0 0 1px var(--amber);
+    z-index: 2; pointer-events:none;
+    transition: left 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s, box-shadow 0.2s;
   }
-  input[type=range]::-moz-range-thumb{
-    width:22px; height:22px; border-radius:50%;
-    background:var(--amber); border:3px solid var(--bg);
-    box-shadow:0 0 0 1px var(--amber); cursor:pointer;
+  input[type=range] {
+    position: absolute; inset:0; opacity: 0; cursor: pointer; z-index: 3; margin:0; height:100%; width:100%;
+  }
+  input[type=range]:hover ~ .slider-thumb-visual {
+    transform: scale(1.15); box-shadow: 0 0 0 2px var(--amber), 0 0 10px rgba(245,166,35,0.4);
+  }
+  input[type=range]:active ~ .slider-thumb-visual {
+    transform: scale(0.95);
   }
   .tick-row{
     display:flex; justify-content:space-between;
@@ -158,9 +174,10 @@
     text-transform:uppercase;
     padding:16px;
     cursor:pointer;
-    transition:transform 0.08s ease, background 0.15s ease;
+    transition:transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), background 0.15s ease, box-shadow 0.15s ease;
   }
-  button.primary:active{ transform:scale(0.98); background:#E19A1E; }
+  button.primary:hover{ transform:translateY(-2px); background:#FFB53D; box-shadow:0 6px 16px rgba(245,166,35,0.25); }
+  button.primary:active{ transform:scale(0.96) translateY(0); background:#E19A1E; box-shadow:0 2px 8px rgba(245,166,35,0.15); }
 
   button.ghost{
     width:100%;
@@ -175,9 +192,10 @@
     text-transform:uppercase;
     padding:15px;
     cursor:pointer;
-    transition:transform 0.08s ease, border-color 0.15s ease;
+    transition:transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.15s ease, background 0.15s ease;
   }
-  button.ghost:active{ transform:scale(0.98); border-color:var(--text-dim); }
+  button.ghost:hover{ transform:translateY(-2px); border-color:var(--text); background:rgba(233,238,244,0.06); }
+  button.ghost:active{ transform:scale(0.96) translateY(0); border-color:var(--text-dim); background:transparent; }
 
   button.extreme-btn{
     width:100%;
@@ -193,10 +211,29 @@
     padding:14px;
     cursor:pointer;
     margin-bottom:18px;
-    transition:transform 0.08s ease, background 0.15s ease, color 0.15s ease;
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
+    --fill-level: 0%;
+    transition:transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
   }
-  button.extreme-btn:active{ transform:scale(0.98); }
-  button.extreme-btn.active{ background:var(--red); color:#2A0708; }
+  button.extreme-btn::before {
+    content: ''; position: absolute;
+    top: calc(100% - var(--fill-level)); left: -25%;
+    width: 150%; padding-bottom: 150%;
+    background: rgba(255,90,95, 0.25);
+    border-radius: 40%;
+    animation: waveSpin 5s linear infinite;
+    transition: top 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: -1; pointer-events: none;
+  }
+  @keyframes waveSpin {
+    0% { transform: translateY(0) rotate(0deg); }
+    100% { transform: translateY(0) rotate(360deg); }
+  }
+  button.extreme-btn:hover{ transform:translateY(-2px); background:rgba(255,90,95,0.08); box-shadow:0 6px 16px rgba(255,90,95,0.15); }
+  button.extreme-btn:active{ transform:scale(0.96) translateY(0); background:transparent; box-shadow:none; }
+  button.extreme-btn.active{ background:transparent; color:var(--text); border-color:var(--red); text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
 
   /* ---- EXTREME MODE MODAL ---- */
   .extreme-overlay{
@@ -472,6 +509,12 @@
 </head>
 <body>
 
+<div class="bg-blobs">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+</div>
+
 <div class="app">
 
   <p class="eyebrow">MODERN SCHULTE GRID TRAINER</p>
@@ -485,7 +528,12 @@
         <span>Grid size</span>
         <span class="val"><span id="size-val">7</span> × <span id="size-val-2">7</span></span>
       </div>
-      <input type="range" id="size-slider" min="5" max="10" value="7" step="1">
+      <div class="slider-wrap">
+        <div class="slider-track-bg"></div>
+        <div class="slider-track-visual"></div>
+        <div class="slider-thumb-visual"></div>
+        <input type="range" id="size-slider" min="5" max="10" value="7" step="1">
+      </div>
       <div class="tick-row">
         <span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
       </div>
@@ -629,6 +677,7 @@
         ev.stopPropagation();
         state.mods[mod.key] = !state.mods[mod.key];
         renderModList();
+        updateExtremeButton();
       });
       modList.appendChild(row);
     });
@@ -637,6 +686,7 @@
   function updateExtremeButton(){
     var count = 0;
     MOD_DEFS.forEach(function(mod){ if (state.mods[mod.key]) count++; });
+    btnExtreme.style.setProperty('--fill-level', (count / 3 * 105) + '%');
     if (count > 0){
       btnExtreme.textContent = 'Extreme mode \u00B7 ' + count + '/3';
       btnExtreme.classList.add('active');
@@ -663,6 +713,8 @@
     sizeVal.textContent = n;
     sizeVal2.textContent = n;
     cellCountVal.textContent = (n * n);
+    var pct = ((n - 5) / 5) * 100;
+    sizeSlider.parentNode.style.setProperty('--slider-pct', pct + '%');
   }
   sizeSlider.addEventListener('input', updateSliderUI);
   updateSliderUI();
@@ -967,7 +1019,7 @@
 
     ctx.fillStyle = '#4C5A6C';
     ctx.font = '500 16px "JetBrains Mono", monospace';
-    ctx.fillText('PLAY AT PULSEGRID', 70, footerY);
+    ctx.fillText('PLAY AT PULSEGRID.WUQING9CHONGTIAN.DPDNS.ORG', 70, footerY);
 
     canvas.toBlob(function(blob){
       var url = URL.createObjectURL(blob);
