@@ -758,6 +758,107 @@
     return arr;
   }
 
+  /* ---- Anti-adjacency placement algorithm ----
+     Ensures no two consecutive numbers (diff === 1) sit in
+     neighboring cells (horizontally, vertically, or diagonally).
+     Strategy: shuffle, detect conflicts, iteratively swap with a
+     distant non-conflicting cell. Retry from scratch if stuck. */
+
+  function getNeighborIndices(idx, n){
+    var total = n * n;
+    var r = Math.floor(idx / n);
+    var c = idx % n;
+    var neighbors = [];
+    for (var dr = -1; dr <= 1; dr++){
+      for (var dc = -1; dc <= 1; dc++){
+        if (dr === 0 && dc === 0) continue;
+        var nr = r + dr, nc = c + dc;
+        if (nr >= 0 && nr < n && nc >= 0 && nc < n){
+          neighbors.push(nr * n + nc);
+        }
+      }
+    }
+    return neighbors;
+  }
+
+  function hasConflict(nums, idx, n){
+    var val = nums[idx];
+    var neighbors = getNeighborIndices(idx, n);
+    for (var k = 0; k < neighbors.length; k++){
+      if (Math.abs(nums[neighbors[k]] - val) === 1) return true;
+    }
+    return false;
+  }
+
+  function wouldConflict(nums, idxA, idxB, n){
+    /* Check whether swapping idxA and idxB would create any new
+       conflicts for either position or their neighbors. */
+    var valA = nums[idxA], valB = nums[idxB];
+    // Temporarily swap
+    nums[idxA] = valB; nums[idxB] = valA;
+    var bad = hasConflict(nums, idxA, n) || hasConflict(nums, idxB, n);
+    // Also check neighbors of both positions
+    if (!bad){
+      var nA = getNeighborIndices(idxA, n);
+      for (var k = 0; k < nA.length && !bad; k++) bad = hasConflict(nums, nA[k], n);
+    }
+    if (!bad){
+      var nB = getNeighborIndices(idxB, n);
+      for (var k = 0; k < nB.length && !bad; k++) bad = hasConflict(nums, nB[k], n);
+    }
+    // Swap back
+    nums[idxA] = valA; nums[idxB] = valB;
+    return bad;
+  }
+
+  function generateSpacedNums(n){
+    var total = n * n;
+    var nums = [];
+    for (var i = 1; i <= total; i++) nums.push(i);
+
+    var MAX_RETRIES = 60;
+    for (var attempt = 0; attempt < MAX_RETRIES; attempt++){
+      shuffle(nums);
+
+      var solved = true;
+      var MAX_SWAPS = total * 12;
+      for (var pass = 0; pass < MAX_SWAPS; pass++){
+        // Find all conflicting indices
+        var conflicts = [];
+        for (var i = 0; i < total; i++){
+          if (hasConflict(nums, i, n)) conflicts.push(i);
+        }
+        if (conflicts.length === 0){ solved = true; break; }
+        solved = false;
+
+        // Pick a random conflicting cell
+        var ci = conflicts[Math.floor(Math.random() * conflicts.length)];
+
+        // Build a list of candidate swap targets (non-adjacent, non-conflicting after swap)
+        var candidates = [];
+        for (var j = 0; j < total; j++){
+          if (j === ci) continue;
+          // Skip cells that are neighbors of ci (swapping neighbors rarely helps)
+          var neighborsOfCi = getNeighborIndices(ci, n);
+          var isNeighbor = false;
+          for (var k = 0; k < neighborsOfCi.length; k++){
+            if (neighborsOfCi[k] === j){ isNeighbor = true; break; }
+          }
+          if (isNeighbor) continue;
+          if (!wouldConflict(nums, ci, j, n)) candidates.push(j);
+        }
+
+        if (candidates.length > 0){
+          var pick = candidates[Math.floor(Math.random() * candidates.length)];
+          var tmp = nums[ci]; nums[ci] = nums[pick]; nums[pick] = tmp;
+        }
+      }
+      if (solved) return nums;
+    }
+    // Fallback (extremely unlikely): return best-effort arrangement
+    return nums;
+  }
+
   function buildGrid(n){
     state.n = n;
     state.nextExpected = 1;
@@ -806,9 +907,7 @@
 
   function assignNumbers(){
     var total = state.n * state.n;
-    var nums = [];
-    for (var i = 1; i <= total; i++) nums.push(i);
-    shuffle(nums);
+    var nums = generateSpacedNums(state.n);
     for (var i = 0; i < total; i++){
       state.cells[i].dataset.number = nums[i];
       state.cells[i].textContent = nums[i];
