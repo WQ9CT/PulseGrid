@@ -500,6 +500,51 @@
   .fail-sub{ color:var(--text-dim); font-size:13px; margin-bottom:34px; }
   .fail-sub b{ color:var(--text); }
 
+  /* ---- CHEAT OVERLAY ---- */
+  .cheat-overlay{
+    position:fixed; inset:0;
+    background:rgba(6,9,12,0.96);
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    display:none;
+    align-items:center; justify-content:center;
+    z-index:60;
+    padding:20px;
+    opacity:0;
+    transition:opacity 0.4s ease;
+  }
+  .cheat-overlay.active{ display:flex; opacity:1; }
+  .cheat-card{ width:100%; max-width:420px; text-align:center; }
+  .cheat-icon{
+    width:64px; height:64px;
+    margin:0 auto 20px;
+    border-radius:50%;
+    background:var(--red-soft);
+    border:2px solid var(--red);
+    display:flex; align-items:center; justify-content:center;
+    font-size:28px;
+    animation:cheatPulse 2s ease-in-out infinite;
+  }
+  @keyframes cheatPulse{
+    0%,100%{ box-shadow:0 0 0 0 rgba(255,90,95,0.3); }
+    50%{ box-shadow:0 0 0 12px rgba(255,90,95,0); }
+  }
+  .cheat-eyebrow{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:0.28em;
+    text-transform:uppercase; color:var(--red); margin-bottom:14px;
+  }
+  .cheat-title{
+    font-family:var(--font-mono); font-weight:800;
+    font-size:clamp(24px, 6vw, 32px);
+    color:var(--text);
+    letter-spacing:-0.01em;
+    margin:0 0 16px;
+  }
+  .cheat-sub{
+    color:var(--text-dim); font-size:13px; line-height:1.7;
+    margin-bottom:34px; max-width:360px; margin-left:auto; margin-right:auto;
+  }
+
   #share-canvas{ display:none; }
 
   .github-link {
@@ -634,6 +679,18 @@
   </div>
 </div>
 
+<div class="cheat-overlay" id="cheat-overlay">
+  <div class="cheat-card">
+    <div class="cheat-icon">⚠️</div>
+    <p class="cheat-eyebrow">Fair play violation</p>
+    <p class="cheat-title">Automated input detected</p>
+    <p class="cheat-sub">Our system has detected non-human input patterns during this session. To maintain a fair and competitive environment for all players, this run has been invalidated.<br><br>Please play using your own reflexes — that's what makes PulseGrid fun.</p>
+    <div class="complete-actions">
+      <button class="primary" id="btn-cheat-dismiss">Understood</button>
+    </div>
+  </div>
+</div>
+
 <canvas id="share-canvas" width="1200" height="630"></canvas>
 
 <script>
@@ -653,7 +710,13 @@
     peeksLeft: 0,
     peekActive: false,
     clockSeconds: 0,
-    clockHandle: null
+    clockHandle: null,
+    /* Anti-cheat tracking */
+    clickTimestamps: [],     /* timestamps of last N correct clicks */
+    clickOffsets: [],         /* {dx, dy} offset from cell center for each correct click */
+    honeypotTriggered: false,
+    cheated: false,
+    sessionId: ''             /* unique ID for watermark */
   };
 
   var MOD_DEFS = [
@@ -696,6 +759,8 @@
   var failTitle = document.getElementById('fail-title');
   var failSub = document.getElementById('fail-sub');
   var btnFailRetry = document.getElementById('btn-fail-retry');
+  var cheatOverlay = document.getElementById('cheat-overlay');
+  var btnCheatDismiss = document.getElementById('btn-cheat-dismiss');
 
   function renderModList(){
     modList.innerHTML = '';
@@ -888,6 +953,17 @@
       state.cells.push(cellEl);
     }
 
+    /* Honeypot: invisible cell that auto-clickers / DOM traversal scripts may click.
+       It's positioned offscreen and has zero opacity so real users never see it. */
+    var honeypot = document.createElement('div');
+    honeypot.className = 'cell';
+    honeypot.dataset.honeypot = 'true';
+    honeypot.dataset.number = '0';
+    honeypot.textContent = '0';
+    honeypot.style.cssText = 'position:absolute;width:1px;height:1px;opacity:0;pointer-events:auto;overflow:hidden;left:-9999px;top:-9999px;';
+    honeypot.addEventListener('click', onCellClick);
+    gridEl.appendChild(honeypot);
+
     hudMode.textContent = n + '×' + n;
     totalNumEl.textContent = total;
     nextNumEl.textContent = 1;
@@ -961,13 +1037,81 @@
 
   function pad2(v){ return (v < 10 ? '0' : '') + v; }
 
+  /* ---- Anti-cheat helpers ---- */
+  function generateSessionId(){
+    var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    var id = '';
+    for (var i = 0; i < 16; i++) id += chars.charAt(Math.floor(Math.random() * chars.length));
+    return id;
+  }
+
+  function recordClickTiming(){
+    var now = performance.now();
+    state.clickTimestamps.push(now);
+    if (state.clickTimestamps.length > 10) state.clickTimestamps.shift();
+  }
+
+  function recordClickOffset(e, cellEl){
+    var rect = cellEl.getBoundingClientRect();
+    var cx = rect.left + rect.width / 2;
+    var cy = rect.top + rect.height / 2;
+    var dx = (e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : cx)) - cx;
+    var dy = (e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : cy)) - cy;
+    state.clickOffsets.push({ dx: dx, dy: dy });
+    if (state.clickOffsets.length > 20) state.clickOffsets.shift();
+  }
+
+  function checkRhythmCheat(){
+    /* Trigger if 10 consecutive correct clicks are all < 50ms apart */
+    if (state.clickTimestamps.length < 10) return false;
+    var ts = state.clickTimestamps;
+    for (var i = 1; i < ts.length; i++){
+      if (ts[i] - ts[i - 1] >= 50) return false;
+    }
+    return true;
+  }
+
+  function checkCoordinateCheat(){
+    /* If 15+ correct clicks and ALL land within 2px of cell center => suspicious */
+    if (state.clickOffsets.length < 15) return false;
+    for (var i = 0; i < state.clickOffsets.length; i++){
+      var o = state.clickOffsets[i];
+      if (Math.abs(o.dx) > 2 || Math.abs(o.dy) > 2) return false;
+    }
+    return true;
+  }
+
+  function triggerCheatDetection(){
+    if (state.cheated) return;
+    state.cheated = true;
+    state.finished = true;
+    clearInterval(state.timerHandle);
+    if (state.clockHandle) clearInterval(state.clockHandle);
+    setTimeout(function(){
+      cheatOverlay.classList.add('active');
+    }, 200);
+  }
+
   function onCellClick(e){
     if (!state.started || state.finished) return;
     var cellEl = e.currentTarget;
+
+    /* Honeypot cell — invisible trap for automated scripts */
+    if (cellEl.dataset.honeypot === 'true'){
+      state.honeypotTriggered = true;
+      triggerCheatDetection();
+      return;
+    }
+
+    /* Solved cells are completely inert — no error reaction */
     if (cellEl.classList.contains('solved')) return;
 
     var num = parseInt(cellEl.dataset.number, 10);
     if (num === state.nextExpected){
+      /* ---- CORRECT ---- */
+      recordClickTiming();
+      recordClickOffset(e, cellEl);
+
       cellEl.classList.add('solved', 'flash-correct');
       cellEl.addEventListener('animationend', function handler(){
         cellEl.classList.remove('flash-correct');
@@ -984,10 +1128,17 @@
         clockVal.textContent = state.clockSeconds;
       }
 
+      /* Anti-cheat checks after each correct click */
+      if (checkRhythmCheat() || checkCoordinateCheat()){
+        triggerCheatDetection();
+        return;
+      }
+
       if (solvedCount === total){
         finishGame();
       }
     } else {
+      /* ---- WRONG (anything that isn't the next expected number) ---- */
       state.mistakes++;
       cellEl.classList.remove('flash-wrong');
       void cellEl.offsetWidth;
@@ -1050,7 +1201,14 @@
   }
 
   tapOverlay.addEventListener('click', function(){
-    if (!state.started) beginPlay();
+    if (!state.started){
+      state.sessionId = generateSessionId();
+      state.clickTimestamps = [];
+      state.clickOffsets = [];
+      state.honeypotTriggered = false;
+      state.cheated = false;
+      beginPlay();
+    }
   });
 
   btnStart.addEventListener('click', function(){
@@ -1071,6 +1229,14 @@
 
   btnFailRetry.addEventListener('click', function(){
     failOverlay.classList.remove('active');
+    screenGrid.classList.remove('active');
+    screenStart.classList.add('active');
+    if (state.timerHandle) clearInterval(state.timerHandle);
+    if (state.clockHandle) clearInterval(state.clockHandle);
+  });
+
+  btnCheatDismiss.addEventListener('click', function(){
+    cheatOverlay.classList.remove('active');
     screenGrid.classList.remove('active');
     screenStart.classList.add('active');
     if (state.timerHandle) clearInterval(state.timerHandle);
@@ -1150,6 +1316,14 @@
     ctx.fillStyle = '#4C5A6C';
     ctx.font = '500 16px "JetBrains Mono", monospace';
     ctx.fillText('PLAY AT PULSEGRID.WUQING9CHONGTIAN.DPDNS.ORG', 70, footerY);
+
+    /* Invisible watermark: embed session fingerprint for result authenticity.
+       Uses near-background color at 1px size — invisible to the eye but
+       extractable from the raw image data for verification. */
+    var watermark = 'PG:' + state.sessionId + ':' + Date.now() + ':' + state.n + ':' + state.finalTimeStr + ':' + state.mistakes;
+    ctx.fillStyle = 'rgba(11,15,20,0.02)';
+    ctx.font = '1px monospace';
+    ctx.fillText(watermark, 2, H - 2);
 
     canvas.toBlob(function(blob){
       var url = URL.createObjectURL(blob);
